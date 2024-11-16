@@ -1,0 +1,8 @@
+2024-11-16 00:57:41,770 - INFO - Downloading required NLTK resources...
+2024-11-16 00:57:41,770 - INFO - Downloading NLTK resource: punkt
+2024-11-16 00:57:41,770 - INFO - Downloading NLTK resource: stopwords
+2024-11-16 00:57:41,771 - INFO - Downloading NLTK resource: wordnet
+2024-11-16 00:57:41,771 - INFO - Downloading NLTK resource: averaged_perceptron_tagger
+2024-11-16 00:57:41,771 - INFO - Downloading NLTK resource: omw-1.4
+2024-11-16 00:57:52,556 - INFO - Loading data from innovius_case_study_data.csv
+2024-11-16 00:57:52,560 - ERROR - Input file not found. Please check the file path.
