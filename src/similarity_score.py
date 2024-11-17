@@ -1,79 +1,59 @@
-import numpy as np
-from typing import List, Union
 from sklearn.metrics.pairwise import cosine_similarity
-import warnings
+import numpy as np
+from typing import List, Tuple
+from src.utils import save_np_array_to_file
+import os
+from src.tfidf_extractor import TfidfExtractor
+from src.bert_extractor import BertExtractor
+from src.bm25_extractor import BM25Extractor
 
-def calculate_similarity(features: np.ndarray) -> np.ndarray:
-    """
-    Calculate cosine similarity matrix from feature vectors
-    
-    Parameters:
-    - features: Feature matrix (n_samples x n_features)
-    
-    Returns:
-    - similarity_matrix: n_samples x n_samples cosine similarity matrix
-    
-    Raises:
-    - ValueError: If input is invalid
-    """
-    # Input validation
-    if not isinstance(features, np.ndarray):
-        raise ValueError("Features must be a numpy array")
-    
-    if features.ndim != 2:
-        raise ValueError("Features must be a 2D array")
+class SimilarityCalculator:
+    def __init__(self, feature_type="tfidf"):
+        self.feature_type = feature_type
+        self.feature_extractor = None
+        if feature_type == "bert":
+            self.feature_extractor = BertExtractor()
+        elif feature_type == "tfidf":
+            self.feature_extractor = TfidfExtractor()
+        elif feature_type == "bm25":
+            self.feature_extractor = BM25Extractor()
+        else:
+            raise "Invalid feature type"
         
-    if np.isnan(features).any():
-        raise ValueError("Features contain NaN values")
-        
-    if np.isinf(features).any():
-        raise ValueError("Features contain infinite values")
-    
-    try:
-        # Handle sparse matrices
-        if hasattr(features, 'toarray'):
-            features = features.toarray()
-            
-        # Calculate cosine similarity using scikit-learn's optimized implementation
-        similarity_matrix = cosine_similarity(features)
-        
-        # Ensure the matrix is symmetric and has proper self-similarities
-        np.fill_diagonal(similarity_matrix, 1.0)
-        
-        return similarity_matrix
-        
-    except Exception as e:
-        raise RuntimeError(f"Error calculating cosine similarity: {str(e)}")
+        self.feature_dir = f"features_{self.feature_type}"
+        os.makedirs(self.feature_dir, exist_ok=True)
 
-def get_top_similar(similarity_matrix: np.ndarray, idx: int, n: int = 5) -> List[tuple]:
-    """
-    Get top N most similar items for a given index
     
-    Parameters:
-    - similarity_matrix: Cosine similarity matrix
-    - idx: Index of the item to find similarities for
-    - n: Number of similar items to return
-    
-    Returns:
-    - List of tuples (index, similarity_score) sorted by similarity
-    """
-    if idx >= len(similarity_matrix):
-        raise ValueError("Index out of bounds")
-        
-    # Get similarities for the given index
-    similarities = similarity_matrix[idx]
-    
-    # Get indices excluding the query index
-    indices = np.arange(len(similarities))
-    mask = indices != idx
-    
-    # Sort similarities (excluding self-similarity)
-    similarities = similarities[mask]
-    indices = indices[mask]
-    
-    # Get top N
-    top_indices = np.argsort(similarities)[::-1][:n]
-    
-    return [(indices[i], similarities[i]) for i in top_indices]
+    def extract_features(self, texts):
+        if self.feature_type == "bm25":
+            self.feature_extractor.fit(texts)
+        features = self.feature_extractor.extract_features(texts)
+        return features
 
-# Example usage
+    def calculate_similarity_matrix(self, features, batch_size=500):
+        n = features.shape[0]
+
+        print(f"Calculating similarity matrix for {n} documents")
+        for i , start in enumerate(range(0, n, batch_size)):
+            end = min(start + batch_size, n)
+            if self.feature_type == "bm25":
+                similarity_matrix =features[start:end]
+            else:
+                similarity_matrix = cosine_similarity(features[start:end], features)
+            if not os.path.exists(f"{self.feature_dir}/similarity_matrix_{start}_{end}.npy"):
+                save_np_array_to_file(similarity_matrix, f"{self.feature_dir}/similarity_matrix_{start}_{end}.npy")
+                print(f"Saved similarity matrix for {start} to {end} documents to file")        
+
+    def get_similar_documents(self, company_idx,num_docs):
+        similarity_files = os.listdir(self.feature_dir)
+        for file_ in similarity_files:
+            if file_.startswith("similarity_matrix"):
+                start, end = file_.split("_")[-2], file_.split("_")[-1].split(".")[0]
+                if int(start) <= company_idx <= int(end):
+                    similarity_matrix = np.load(f"{self.feature_dir}/{file_}")
+                    similar_docs = []
+                    for idx, score in zip(np.argsort(similarity_matrix[company_idx])[::-1][1:num_docs+1], similarity_matrix[company_idx][np.argsort(similarity_matrix[company_idx])[::-1][1:num_docs+1]]):
+                        similar_docs.append((idx, score))
+                    return similar_docs
+
+    
