@@ -6,6 +6,9 @@ from nltk.tokenize import word_tokenize, sent_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk.stem.porter import PorterStemmer
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Download required NLTK data
 nltk.download('punkt')

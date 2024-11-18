@@ -6,9 +6,12 @@ import os
 from src.tfidf_extractor import TfidfExtractor
 from src.bert_extractor import BertExtractor
 from src.bm25_extractor import BM25Extractor
+import logging
+
+logger = logging.getLogger(__name__)
 
 class SimilarityCalculator:
-    def __init__(self, feature_type="tfidf"):
+    def __init__(self, feature_type):
         self.feature_type = feature_type
         self.feature_extractor = None
         if feature_type == "bert":
@@ -16,7 +19,7 @@ class SimilarityCalculator:
         elif feature_type == "tfidf":
             self.feature_extractor = TfidfExtractor()
         elif feature_type == "bm25":
-            self.feature_extractor = BM25Extractor()
+            self.feature_extractor = BM25Extractor(feature_type="bm25")
         else:
             raise "Invalid feature type"
         
@@ -27,8 +30,10 @@ class SimilarityCalculator:
     def extract_features(self, texts):
         if self.feature_type == "bm25":
             self.feature_extractor.fit(texts)
-        features = self.feature_extractor.extract_features(texts)
-        return features
+            self.feature_extractor.extract_features_and_save(texts)
+        else:
+            features = self.feature_extractor.extract_features(texts)
+            return features
 
     def calculate_similarity_matrix(self, features, batch_size=500):
         n = features.shape[0]
@@ -36,10 +41,7 @@ class SimilarityCalculator:
         print(f"Calculating similarity matrix for {n} documents")
         for i , start in enumerate(range(0, n, batch_size)):
             end = min(start + batch_size, n)
-            if self.feature_type == "bm25":
-                similarity_matrix =features[start:end]
-            else:
-                similarity_matrix = cosine_similarity(features[start:end], features)
+            similarity_matrix = cosine_similarity(features[start:end], features)
             if not os.path.exists(f"{self.feature_dir}/similarity_matrix_{start}_{end}.npy"):
                 save_np_array_to_file(similarity_matrix, f"{self.feature_dir}/similarity_matrix_{start}_{end}.npy")
                 print(f"Saved similarity matrix for {start} to {end} documents to file")        
