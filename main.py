@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 def main(file_path):
     try:
         df = pd.read_csv(file_path)
-
+        logger.info(f"Loaded {len(df)} companies from {file_path}")
 
         preprocessor = TextPreprocessor()
         df_processed = preprocessor.process_dataframe(df)
@@ -24,14 +24,27 @@ def main(file_path):
         
 
         texts = df_processed['processed_description'].tolist()
-        
+        print(texts[0])
         feature_types = ["bm25"]
         for feature_type in feature_types:
             logger.info(f"Processing {feature_type} features...")
             similarity_calculator = SimilarityCalculator(feature_type)
-            feature_matrix = similarity_calculator.extract_features(texts)
-            similarity_calculator.calculate_similarity_matrix(feature_matrix)
-            logger.info(f"Completed processing {feature_type} features")
+            logger.info("this is done calling")
+            if feature_type == "bm25":
+                # For BM25, features are extracted and similarity matrices are saved directly
+                logger.info("this is done calling 2")
+                similarity_calculator.extract_features(texts)
+                
+                logger.info(f"{feature_type} features extracted and similarity matrices saved.")
+            else:
+                # For other feature types, extract features and calculate similarity matrix
+                feature_matrix = similarity_calculator.extract_features(texts)
+                similarity_calculator.calculate_similarity_matrix(feature_matrix)
+                logger.info(f"Similarity matrix calculated and saved for {feature_type}.")
+
+            logger.info(f"Completed processing {feature_type} features.")
+
+        logger.info("Processing completed.")
 
     except Exception as e:
         logger.error(f"Error in processing: {e}", exc_info=True)
