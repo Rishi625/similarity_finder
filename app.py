@@ -1,67 +1,107 @@
 import streamlit as st
 import pandas as pd
-from src.utils import load_json_from_file
-from src.similarity_score import SimilarityCalculator
+import altair as alt
+import numpy as np
 
+# Set page configuration
+st.set_page_config(
+    page_title="Similarity Score Analyzer", 
+    page_icon=":mag_right:", 
+    layout="wide"
+)
 
-st.title("demo")
-
-with st.sidebar:
-    radio = st.radio(
-        "Select feature type",
-        ("tfidf", "bert","bm25"),
-        horizontal=True
-    )
-    similarity_threshold = st.slider(
-    "Select similarity threshold (0 to 1)", 
-    min_value=0.0, 
-    max_value=1.0, 
-    value=0.500, 
-    step=0.001
-    )
-    num_docs = st.number_input ("Enter the number of similar documents to display:", 
-    min_value=1, 
-    max_value=100, 
-    value=5, 
-    step=1)
-
-
-
-similarity_calculator = SimilarityCalculator(radio)
-
+# Load data
 df = pd.read_csv('data/innovius_case_study_data.csv').drop_duplicates()
 
-org_id_key_map = load_json_from_file('org_id_key_map.json')
-key_org_id_map = {v:k for k, v in org_id_key_map.items()}
+# Sidebar inputs
+with st.sidebar:
+    # Feature selection
+    feature_type = st.radio(
+        "Select feature type",
+        ("tfidf", "bert", "bm25"),
+        horizontal=True
+    )
+    
+    # Similarity threshold
+    similarity_threshold = st.number_input(
+        "Select similarity threshold (0 to 1)", 
+        min_value=0.0, 
+        max_value=1.0, 
+        value=0.5, 
+        step=0.01
+    )
+    
+    # Number of similar documents to display
+    num_docs = st.number_input(
+        "Enter the number of similar documents to display:", 
+        min_value=1, 
+        max_value=1000, 
+        value=10, 
+        step=1
+    )
 
-df['Organization Id'] = df['Organization Id'].apply(lambda x: str(x))
+# Import necessary modules for similarity calculations
+from src.similarity_score import SimilarityCalculator
+from src.utils import load_json_from_file
+
+# Prepare company selection
+org_id_key_map = load_json_from_file('org_id_key_map.json')
+key_org_id_map = {v: k for k, v in org_id_key_map.items()}
+df['Organization Id'] = df['Organization Id'].astype(str)
 company_list = df['Name'] + '_' + df['Organization Id']
 
+# Dropdown for company selection
 selected_company = st.selectbox("Select company", company_list)
 
-
-button = st.button("Process")
-
-if button:
+# Button to trigger similarity score calculation
+if st.button("Calculate Similarity Scores"):
     if selected_company:
+        # Initialize similarity calculator
+        similarity_calculator = SimilarityCalculator(feature_type)
+        
+        # Extract selected company details
         org_id = selected_company.split('_')[-1]
         company_idx = org_id_key_map[org_id]
-        st.write(f"Selected company: {df.iloc[company_idx]['Name']}")
-        st.write(f"Description1: {df.iloc[company_idx]['Description']}")
         
-        similar_docs = similarity_calculator.get_similar_documents(company_idx,num_docs)
-        filtered_docs = [
-            (doc_idx, score) 
-            for doc_idx, score in similar_docs 
-            if score >= similarity_threshold
+        # Calculate similarity scores
+        similar_docs = similarity_calculator.get_similar_documents(company_idx,num_docs=num_docs)
+        
+        # Map results to a dataframe
+        doc_idxs = [key_org_id_map[doc_idx] for doc_idx, _ in similar_docs]
+        scores = [score for _, score in similar_docs]
+        
+        # Create a filtered dataframe with similarity scores
+        df_similarity = df[df['Organization Id'].isin(doc_idxs)].copy()
+        df_similarity['Similarity Score'] = [
+            scores[doc_idxs.index(str(org_id))] if str(org_id) in doc_idxs else 0 
+            for org_id in df_similarity['Organization Id']
         ]
-        st.write(f"Total documents with similarity score >= {similarity_threshold}: {len(filtered_docs)}")
+        
+        # Sort dataframe by similarity score
+        df_similarity = df_similarity.sort_values(by='Similarity Score', ascending=False)
+        
+        # Display base company
+        base_company = df.iloc[company_idx]['Name']
+        st.write(f"### Base Company: {base_company}")
+        
+        # Categorize and visualize similarity scores
+        above_threshold = df_similarity[df_similarity['Similarity Score'] >= similarity_threshold]
+        below_threshold = df_similarity[df_similarity['Similarity Score'] < similarity_threshold]
+        
+        chart_data = pd.DataFrame({
+            "Category": ["Above Threshold", "Below Threshold"],
+            "Count": [len(above_threshold), len(below_threshold)]
+        })
 
-        if filtered_docs:
-            doc_idxs = [key_org_id_map[doc_idx] for doc_idx, score in filtered_docs]
-            scores = [score for doc_idx, score in filtered_docs]
-            df_selected = df[df['Organization Id'].isin(doc_idxs)].reset_index(drop=True)
-            df_selected['Score'] = scores
-            st.dataframe(df_selected)
-        else:
-            st.write(f"No documents found with similarity score >= {similarity_threshold}.")
+        bar_chart = alt.Chart(chart_data).mark_bar().encode(
+            x=alt.X("Category", title="Similarity Category"),
+            y=alt.Y("Count", title="Number of Documents"),
+            color=alt.Color("Category", legend=None)
+        )
+
+        st.altair_chart(bar_chart, use_container_width=True)
+        
+        
+        # Display top results
+        st.write(f"### Top {num_docs} Similar Documents:")
+        st.dataframe(df_similarity.head(num_docs))
