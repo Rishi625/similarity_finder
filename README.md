@@ -139,3 +139,51 @@ Input CSV should contain columns:
 - BM25 uses parallel processing for large datasets
 - Similarity matrices are saved to disk to handle large datasets
 - Batch processing is implemented for memory efficiency
+- 
+
+## Comparison and Use Cases
+
+### When to Use Each Method
+
+1. **TF-IDF**
+   - Quick similarity comparisons
+   - Limited computational resources
+   - Well-defined vocabulary domain
+   - Need for interpretable results
+
+2. **BERT**
+   - Need for semantic understanding
+   - Complex language patterns
+   - Different ways of expressing same concept
+   - High accuracy requirements
+
+3. **BM25**
+   - Information retrieval tasks
+   - Document ranking
+   - Need for length normalization
+   - Balance between complexity and performance
+
+### Performance Characteristics
+
+| Method  | Semantic Understanding | Computational Cost | Memory Usage | Scalability |
+|---------|----------------------|-------------------|--------------|-------------|
+| TF-IDF  | Low                  | Low               | Medium       | High        |
+| BERT    | High                 | High              | High         | Low         |
+| BM25    | Low                  | Medium            | Medium       | Medium      |
+
+### Implementation Considerations
+
+1. **Resource Requirements**
+   - TF-IDF: Minimal CPU and memory
+   - BERT: GPU recommended, high memory
+   - BM25: Moderate CPU and memory
+
+2. **Preprocessing Importance**
+   - TF-IDF: Critical for performance
+   - BERT: Less critical (handles variations)
+   - BM25: Moderate importance
+
+3. **Batch Processing**
+   - TF-IDF: Simple batching
+   - BERT: Required for memory management
+   - BM25: Beneficial for large datasets
