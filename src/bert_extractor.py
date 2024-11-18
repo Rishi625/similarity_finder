@@ -25,3 +25,4 @@ class BertExtractor:
                 batch_features = self.model(**batch_encodings).last_hidden_state[:, 0, :].cpu().numpy()
             features.append(batch_features)
         return np.concatenate(features)
+    

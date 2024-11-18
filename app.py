@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 import numpy as np
+from src.similarity_score import SimilarityCalculator
+from src.utils import load_json_from_file
 
 # Set page configuration
 st.set_page_config(
@@ -22,14 +24,22 @@ with st.sidebar:
         horizontal=True
     )
     
-    # Similarity threshold
-    similarity_threshold = st.number_input(
-        "Select similarity threshold (0 to 1)", 
-        min_value=0.0, 
-        max_value=1.0, 
-        value=0.5, 
-        step=0.01
-    )
+    if feature_type == "bm25":
+        similarity_threshold = st.number_input(
+            "Select similarity threshold (0 to 100)", 
+            min_value=0.0, 
+            max_value=100.0, 
+            value=50.0,  # Default value for bm25
+            step=1.0
+        )
+    else:
+        similarity_threshold = st.number_input(
+            "Select similarity threshold (0 to 1)", 
+            min_value=0.0, 
+            max_value=1.0, 
+            value=0.5, 
+            step=0.01
+        )
     
     # Number of similar documents to display
     num_docs = st.number_input(
@@ -40,9 +50,6 @@ with st.sidebar:
         step=1
     )
 
-# Import necessary modules for similarity calculations
-from src.similarity_score import SimilarityCalculator
-from src.utils import load_json_from_file
 
 # Prepare company selection
 org_id_key_map = load_json_from_file('org_id_key_map.json')
