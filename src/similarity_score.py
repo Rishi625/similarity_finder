@@ -42,10 +42,7 @@ class SimilarityCalculator:
         for i , start in enumerate(range(0, n, batch_size)):
             end = min(start + batch_size, n)
             similarity_matrix = []
-            for _ in range(0, n, batch_size):
-                similarity_matrix.append(cosine_similarity(features[start:end], features[_:_+batch_size]))
-            similarity_matrix = np.concatenate(similarity_matrix, axis=0)
-            # similarity_matrix = cosine_similarity(features[start:end], features)
+            similarity_matrix = cosine_similarity(features[start:end], features)
             if not os.path.exists(f"{self.feature_dir}/similarity_matrix_{start}_{end}.npy"):
                 save_np_array_to_file(similarity_matrix, f"{self.feature_dir}/similarity_matrix_{start}_{end}.npy")
                 print(f"Saved similarity matrix for {start} to {end} documents to file")        
