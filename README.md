@@ -187,3 +187,104 @@ Input CSV should contain columns:
    - TF-IDF: Simple batching
    - BERT: Required for memory management
    - BM25: Beneficial for large datasets
+
+Here’s an updated version of your README without the code, focusing more on the explanation of each component:
+
+---
+
+# Scalable Document Similarity System with Milvus
+
+## Overview
+
+This project implements a **scalable document similarity system** that uses **Milvus**, an open-source vector database, for storing and querying vector embeddings. The system processes large datasets (such as company descriptions), extracts vector features, and enables efficient similarity search. It is built to scale horizontally, handle high data throughput, and provide low-latency similarity search.
+
+## Table of Contents
+
+1. [System Architecture Overview](#system-architecture-overview)
+2. [Implementation Components](#implementation-components)
+3. [Scalability Considerations](#scalability-considerations)
+4. [Performance Optimization](#performance-optimization)
+5. [Deployment Configuration](#deployment-configuration)
+6. [Monitoring and Maintenance](#monitoring-and-maintenance)
+7. [Usage Example](#usage-example)
+8. [System Requirements](#system-requirements)
+9. [Performance Metrics](#performance-metrics)
+
+## 1. System Architecture Overview
+
+The system is designed with several layers for modularity and scalability. Data is ingested from external sources, preprocessed and transformed into vector embeddings, then indexed and stored in Milvus. The similarity search service allows querying of similar documents based on these embeddings.
+
+### Key Components:
+- **Data Ingestion Layer**: Collects and processes raw company data.
+- **Text Preprocessing**: Cleans and tokenizes text data.
+- **Feature Extraction**: Uses machine learning models (e.g., BERT) to extract vector embeddings from the text.
+- **Milvus Vector Storage**: Stores embeddings for fast retrieval and similarity comparison.
+- **Similarity Search Service**: Facilitates searching for similar documents based on vector similarity.
+- **API Layer**: Exposes the system for querying via RESTful APIs.
+
+## 2. Implementation Components
+
+### 2.1 Data Ingestion
+The Data Ingestion Service is responsible for fetching new company data, storing raw documents, and preparing them for vectorization. It batches data to improve throughput and efficiency, then processes and stores the vectors in Milvus.
+
+### 2.2 Feature Extraction
+Text data is processed using pre-trained models like **BERT**. The Feature Extraction component converts text data into vector embeddings, representing each document as a high-dimensional vector. This step is critical for enabling accurate and fast similarity searches.
+
+### 2.3 Milvus Integration
+Milvus is used for storing, indexing, and retrieving vector embeddings. It is configured to create collections and manage indexes optimized for efficient similarity search. The system supports different indexing strategies to optimize performance, like **IVF_FLAT**.
+
+### 2.4 Similarity Search
+The search service allows users to query for documents similar to a given input. It uses the vector embeddings stored in Milvus to find the most similar documents using vector similarity metrics like **Cosine Similarity** or **Euclidean Distance**.
+
+## 3. Scalability Considerations
+
+### 3.1 Horizontal Scaling
+The system is designed to scale horizontally. As data volume increases, new processing nodes can be added to handle the load. The architecture includes components like **Kafka** for message queuing and **Redis** for caching, which allow the system to scale effectively across multiple workers.
+
+### 3.2 Caching Strategy
+Frequent similarity search results are cached in **Redis** to minimize repeated computation and reduce query latency. This improves the response time for users and reduces strain on the database.
+
+## 4. Performance Optimization
+
+### 4.1 Batch Processing
+The system processes data in batches to improve throughput. By grouping similar tasks, the system avoids redundant computations and optimizes the time taken to process large datasets.
+
+### 4.2 Index Optimization
+Milvus indexes are optimized based on the dataset's characteristics, such as its size and distribution. Optimizing the indexing strategy ensures faster query response times and reduced storage requirements.
+
+## 5. Deployment Configuration
+
+The system uses **Docker Compose** for containerized deployments. It configures the Milvus, MongoDB, Redis, and Kafka services to work together. This allows for easy setup, scaling, and maintenance of the system on different environments.
+
+## 6. Monitoring and Maintenance
+
+### 6.1 Health Checks
+A health check service monitors the status of the system’s components. It ensures that the data ingestion, feature extraction, and similarity search processes are functioning properly and alerts administrators if there is any issue.
+
+### 6.2 Data Validation
+A validation service checks the integrity and format of incoming data, ensuring that it complies with predefined schemas before it is processed and stored.
+
+## 7. Usage Example
+
+Once the system is deployed, users can input company descriptions or other relevant text, and the similarity search service will return the most similar documents from the database. The API exposes endpoints that allow users to perform these searches programmatically.
+
+## 8. System Requirements
+
+- **Python 3.8+**
+- **Milvus** (installed and running)
+- **MongoDB** for raw data storage
+- **Redis** for caching
+- **Kafka** for event-driven processing (optional)
+- **Torch** and **transformers** for feature extraction models
+
+## 9. Performance Metrics
+
+Performance is measured based on several factors:
+- **Indexing Speed**: How quickly new data is indexed and made available for searches.
+- **Search Speed**: Time taken to perform similarity searches and return results.
+- **Query Latency**: Latency in searching for similar documents.
+- **Cache Hit Rate**: Efficiency of the caching layer in serving frequent queries.
+
+---
+
+This README provides a high-level overview of the architecture and components of the scalable document similarity system. The system is designed to be extensible, with considerations for handling large volumes of data and optimizing for high-performance similarity searches.
