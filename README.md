@@ -5,16 +5,18 @@ This project implements a document similarity system that supports multiple feat
 
 ## Project Structure
 ```
-├── app.py                 # Streamlit web application
-├── main.py               # Batch processing script
-└── src/                  # Source code directory
-    ├── __init__.py
-    ├── bert_extractor.py
-    ├── bm25_extractor.py
-    ├── similarity_score.py
-    ├── text_preprocessing.py
-    ├── tfidf_extractor.py
-    └── utils.py
+├── app.py                 # Streamlit web interface
+├── main.py               # FastAPI backend service
+└── src/                  # Core functionality
+    ├── bm25_extractor.py    # BM25 feature extraction
+    ├── bm25_index.py        # BM25 indexing and search
+    ├── encoder.py           # BERT model encoding
+    ├── semantic_index.py    # FAISS-based semantic search
+    ├── similarity_score.py  # Main similarity calculation
+    ├── text_preprocessing.py # Text preprocessing utilities
+    ├── tfidf_extractor.py   # TF-IDF feature extraction
+    ├── tfidf_index.py       # TF-IDF indexing and search
+    └── utils.py             # Helper functions
 ```
 
 ## Component Details
