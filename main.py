@@ -1,66 +1,105 @@
 import pandas as pd
 import logging
 from src.text_preprocessing import TextPreprocessor
-from src.similarity_score import SimilarityCalculator
-from src.utils import load_json_from_file, save_json_to_file
+from src.semantic_index import Indexer
+from src.encoder import Encoder
+from src.tfidf_index import TFIDFIndex
+from src.bm25_index import BM25Index
 import os
+from fastapi import FastAPI
+import numpy as np
+
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+
+app = FastAPI()
+
+MODEL_NAME = 'sentence-transformers/all-MiniLM-L6-v2'
+
+df = pd.read_csv("data/innovius_case_study_data.csv")
+encoder_model = Encoder(model_name=MODEL_NAME)
 
 
-def preprocess_data(df, feature_type="bert"):
-        
-    if feature_type == "bert":
+def preprocess_data(df, feature_type="semantic"):
+    if feature_type == "semantic":
         preprocessor = TextPreprocessor(remove_stopwords=False, lemmatize=False)
     else:
         preprocessor = TextPreprocessor()
-
     df_processed = preprocessor.process_dataframe(df)
     return df_processed
 
+semantic_preprocessed_data = preprocess_data(df, feature_type="semantic")
+non_semantic_preprocessed_data = preprocess_data(df, feature_type="non_semantic")
+print(semantic_preprocessed_data.head())
+print(non_semantic_preprocessed_data.head())
 
-def main(file_path):
-    try:
-        df = pd.read_csv(file_path)
-        logger.info(f"Loaded {len(df)} companies from {file_path}")
-        feature_types = ["bert"]
 
-        for feature_type in feature_types:
-            logger.info(f"Processing {feature_type} features...")
-            similarity_calculator = SimilarityCalculator(feature_type)
+def create_semantic_index(preprocessed_data, encoder_model):
+    text_descriptions = preprocessed_data['combined_description'].tolist()
+    if not os.path.exists(f'embeddings.npy'):
+        embeddings = encoder_model.generate_embeddings(text_descriptions)
+        np.save('embeddings.npy', embeddings)
+    else:
+        embeddings = np.load('embeddings.npy')
 
-            if not os.path.exists('preprocessed_data.csv'):
-                df_processed = preprocess_data(df, feature_type="bert")
-                df_processed.to_csv('preprocessed_data.csv', index=False)
-            else:
-                df_processed = pd.read_csv('preprocessed_data.csv')
-            
-            if not os.path.exists('org_id_key_map.json'):
-                org_id_key_map = {ord_id: idx for idx, ord_id in enumerate(df_processed['Organization Id'].to_list())}
-                save_json_to_file(org_id_key_map, 'org_id_key_map.json')
-            else:
-                org_id_key_map = load_json_from_file('org_id_key_map.json')
-                key_org_id_map = {v:k for k, v in org_id_key_map.items()}
+    semantic_index = Indexer(embedding_size=encoder_model.model.config.hidden_size)
+    semantic_index.populate_index(embeddings)
+    return semantic_index
 
-            texts = df_processed['processed_description'].tolist()
-            
-            if feature_type == "bm25":
-                # For BM25, features are extracted and similarity matrices are saved directly
-                similarity_calculator.extract_features(texts)
-                logger.info(f"{feature_type} features extracted and similarity matrices saved.")
-            else:
-                # For other feature types, extract features and calculate similarity matrix
-                feature_matrix = similarity_calculator.extract_features(texts)
-                similarity_calculator.calculate_similarity_matrix(feature_matrix)
-                logger.info(f"Similarity matrix calculated and saved for {feature_type}.")
 
-            logger.info(f"Completed processing {feature_type} features.")
+def create_tfidf_index(preprocessed_data):
+    text_descriptions = preprocessed_data['combined_description'].tolist()
+    tfidf_index = TFIDFIndex()
+    tfidf_index.fit_vectorizer(text_descriptions)
+    tfidf_index.get_tfidf_vectors(text_descriptions)
+    return tfidf_index
 
-        logger.info("Processing completed.")
+def create_bm25_index(preprocessed_data):
+    text_descriptions = preprocessed_data['combined_description'].tolist()
+    bm25_index = BM25Index(text_descriptions)
+    return bm25_index
 
-    except Exception as e:
-        logger.error(f"Error in processing: {e}", exc_info=True)
+logging.info("Creating semantic index")
+semantic_index = create_semantic_index(semantic_preprocessed_data, encoder_model)
+logging.info("Creating tfidf index")
+tfidf_index = create_tfidf_index(non_semantic_preprocessed_data)
+logging.info("Creating bm25 index")
+bm25_index = create_bm25_index(non_semantic_preprocessed_data)
+
+
+
+@app.post('/get_top_k')
+def get_top_k_companies(request: dict):
+    org_id = int(request['org_id'])
+    k = request['k']
+    feature_type = request['feature_type']
+    logging.info(f"org_id: {org_id}, k: {k}, feature_type: {feature_type}")
+
+
+    if feature_type == "semantic":
+        query = semantic_preprocessed_data[semantic_preprocessed_data['Organization Id'].astype(int) == org_id]['combined_description'].values[0]
+        logging.info(f"Query: {query}")
+        query_embedding = encoder_model.generate_embeddings([query]).flatten()
+        indices, scores = semantic_index.get_top_k_indices(query_embedding, k)
+        logging.info(f"Indices: {indices}, Scores: {scores}")
+    elif feature_type == "tfidf":
+        query = non_semantic_preprocessed_data[non_semantic_preprocessed_data['Organization Id'].astype(int) == org_id]['combined_description'].values[0]
+        logging.info(f"Query: {non_semantic_preprocessed_data[non_semantic_preprocessed_data['Organization Id'] == org_id]['combined_description']}")
+        logging.info(f"Query: {query}")
+        indices, scores = tfidf_index.get_top_k_indices(query, k)
+        logging.info(f"Indices: {indices}, Scores: {scores}")
+    elif feature_type == "bm25":
+        query = non_semantic_preprocessed_data[non_semantic_preprocessed_data['Organization Id'].astype(int) == org_id]['combined_description'].values[0]
+        logging.info(f"Query: {query}")
+        indices, scores = bm25_index.get_top_k_indices(query, k)
+        logging.info(f"Indices: {indices}, Scores: {scores}")
+    else:
+        indices, scores = None, None
+    return {
+            "indices": [int(i) for i in indices] if indices is not None else None,
+            "scores": [float(s) for s in scores] if scores is not None else None,
+        }
 
 if __name__ == "__main__":
-    main("data/innovius_case_study_data.csv")
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
