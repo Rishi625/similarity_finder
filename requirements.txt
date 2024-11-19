@@ -1,0 +1,16 @@
+# Core dependencies
+numpy
+pandas
+scikit-learn
+faiss-cpu
+transformers
+rank-bm25
+faiss-cpu
+nltk
+fastapi
+uvicorn
+streamlit
+altair
+tqdm
+cuda-python
+torch 
