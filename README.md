@@ -137,6 +137,12 @@ pip install -r requirements.txt
 ```bash
 python main.py
 ```
+
+```
+# Optionally use docker
+docker build .
+docker run -p 8000:8000 IMAGENAME
+```
 3. Launch the Streamlit Interface:
 ```bash
 streamlit run app.py
