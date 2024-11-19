@@ -1,7 +1,6 @@
-# Document Similarity Finder
+# Document Similarity Analysis System
 
-## Overview
-This project implements a document similarity system that supports multiple feature extraction methods (TF-IDF, BERT, and BM25) to find similar documents based on their textual content. It includes a Streamlit web interface for interactive document comparison and a batch processing system for large-scale similarity calculations.
+A comprehensive system for analyzing and comparing document similarity using multiple approaches including TF-IDF, BM25, and BERT embeddings. The system includes both a FastAPI backend service and a Streamlit web interface.
 
 ## Project Structure
 ```
@@ -19,104 +18,130 @@ This project implements a document similarity system that supports multiple feat
     └── utils.py             # Helper functions
 ```
 
+## System Architecture
+
+The project consists of two main applications:
+- A FastAPI backend service (`main.py`)
+- A Streamlit web interface (`app.py`)
+
 ## Component Details
 
-### 1. Text Preprocessing (`text_preprocessing.py`)
+1. Text Preprocessing (`text_preprocessing.py`)
 The `TextPreprocessor` class handles all text cleaning and normalization tasks:
-- **Key Features**:
-  - Combines multiple description fields into a single text
-  - Removes URLs, email addresses, special characters, and numbers
-  - Performs tokenization, stop word removal, and lemmatization
-  - Custom stop words for business-specific terms
-- **Main Methods**:
-  - `combine_descriptions()`: Merges multiple description fields
-  - `clean_text()`: Performs basic text cleaning
-  - `preprocess_text()`: Applies full preprocessing pipeline
-  - `process_dataframe()`: Processes entire dataframe of documents
+* **Key Features**:
+   * Combines multiple description fields into a single text
+   * Removes URLs, email addresses, special characters
+   * Performs tokenization, stop word removal, and lemmatization
+   * Custom stop words for business-specific terms
+* **Main Methods**:
+   * `preprocess_text()`: Applies full preprocessing pipeline
+   * `clean_text()`: Performs basic text cleaning
+   * `remove_stop_words()`: Filters out stop words
+   * `lemmatize_text()`: Applies lemmatization
+   * `process_dataframe()`: Processes entire dataframe of documents
 
-### 2. Feature Extractors
+2. Semantic Encoding (`encoder.py`)
+The `Encoder` class handles BERT-based semantic embedding generation:
+* **Key Features**:
+   * Uses pre-trained BERT model (sentence-transformers/all-MiniLM-L6-v2)
+   * Supports batch processing for efficiency
+   * GPU acceleration when available
+* **Main Methods**:
+   * `generate_embeddings()`: Creates embeddings for input texts
+   * `_mean_pooling()`: Pools token embeddings into sentence embeddings
 
-#### 2.1 TF-IDF Extractor (`tfidf_extractor.py`)
-- **Class**: `TfidfExtractor`
-- **Features**:
-  - Uses scikit-learn's TfidfVectorizer
-  - Configurable parameters for max_features, min_df, and max_df
-  - Supports unigrams and bigrams
-  - Sublinear term frequency scaling
-- **Methods**:
-  - `extract_features()`: Fits and transforms documents to TF-IDF vectors
-  - `transform()`: Transforms new documents using fitted vectorizer
+3. Semantic Index (`semantic_index.py`)
+The `Indexer` class manages FAISS-based similarity search:
+* **Key Features**:
+   * Uses FAISS for efficient similarity search
+   * Inner product similarity metric
+* **Main Methods**:
+   * `populate_index()`: Adds embeddings to the index
+   * `get_top_k_indices()`: Retrieves most similar documents
 
-#### 2.2 BERT Extractor (`bert_extractor.py`)
-- **Class**: `BertExtractor`
-- **Features**:
-  - Uses Hugging Face's BERT model
-  - GPU support when available
-  - Batch processing for memory efficiency
-- **Methods**:
-  - `extract_features()`: Extracts BERT embeddings with batching
+4. TF-IDF Components
+   
+a. TF-IDF Extractor (`tfidf_extractor.py`)
+* **Key Features**:
+   * Configurable feature extraction parameters
+   * Support for n-grams
+   * IDF smoothing and sublinear term frequency
+* **Main Methods**:
+   * `extract_features()`: Creates TF-IDF matrix
+   * `transform()`: Transforms new texts using fitted vectorizer
 
-#### 2.3 BM25 Extractor (`bm25_extractor.py`)
-- **Class**: `BM25Extractor`
-- **Features**:
-  - Implements Okapi BM25 ranking algorithm
-  - Parallel processing support
-  - Batch processing with disk storage
-- **Methods**:
-  - `fit()`: Prepares BM25 model with corpus
-  - `extract_features_and_save()`: Processes and saves similarity scores
+b. TF-IDF Index (`tfidf_index.py`)
+* **Key Features**:
+   * Cosine similarity-based document comparison
+* **Main Methods**:
+   * `fit_vectorizer()`: Trains the TF-IDF vectorizer
+   * `get_similarity_scores()`: Calculates similarity scores
+   * `get_top_k_indices()`: Finds most similar documents
 
-### 3. Similarity Calculator (`similarity_score.py`)
-- **Class**: `SimilarityCalculator`
-- **Features**:
-  - Unified interface for all feature extractors
-  - Batch processing for large datasets
-  - Disk-based storage for similarity matrices
-- **Methods**:
-  - `extract_features()`: Extracts features using selected method
-  - `calculate_similarity_matrix()`: Computes cosine similarities
-  - `get_similar_documents()`: Retrieves similar documents
+5. BM25 Components
 
-### 4. Utilities (`utils.py`)
-Helper functions for file operations:
-- `save_np_array_to_file()`: Saves NumPy arrays to disk
-- `load_np_array_from_file()`: Loads NumPy arrays from disk
-- `save_json_to_file()`: Saves JSON data to disk
-- `load_json_from_file()`: Loads JSON data from disk
+a. BM25 Extractor (`bm25_extractor.py`)
+* **Key Features**:
+   * Parallel processing support
+   * Batch processing for large datasets
+   * File-based feature storage
+* **Main Methods**:
+   * `fit()`: Trains BM25 model on corpus
+   * `extract_features_and_save()`: Generates and stores features
 
-### 5. Web Interface (`app.py`)
-Streamlit-based web application featuring:
-- Feature type selection (TF-IDF, BERT, BM25)
-- Similarity threshold adjustment
-- Number of similar documents selection
-- Interactive company selection
-- Results display with similarity scores
+b. BM25 Index (`bm25_index.py`)
+* **Key Features**:
+   * Implementation of Okapi BM25 algorithm
+* **Main Methods**:
+   * `tokenize_query()`: Prepares queries for processing
+   * `get_top_k_indices()`: Retrieves similar documents
 
-### 6. Batch Processing (`main.py`)
-Script for processing large datasets:
-- Loads and preprocesses document data
-- Maintains organization ID mappings
-- Processes features using selected extractors
-- Handles error logging and reporting
+6. Similarity Calculator (`similarity_score.py`)
+The main orchestrator for similarity calculations:
+* **Key Features**:
+   * Supports multiple similarity methods (BERT, TF-IDF, BM25)
+   * Batch processing for large-scale comparisons
+* **Main Methods**:
+   * `extract_features()`: Generates features using selected method
+   * `calculate_similarity_matrix()`: Computes similarity scores
+   * `get_similar_documents()`: Retrieves similar documents
 
-## Usage
+7. Web Interface (`app.py`)
+Streamlit-based user interface:
+* **Key Features**:
+   * Interactive company selection
+   * Configurable similarity thresholds
+   * Visualization of similarity results
+* **Main Components**:
+   * Similarity score calculation
+   * Results visualization
+   * Company selection interface
 
-### Web Interface
-1. Run the Streamlit app:
+8. API Server (`main.py`)
+FastAPI-based backend service:
+* **Key Features**:
+   * REST API endpoints for similarity search
+   * Support for multiple similarity methods
+   * Efficient data preprocessing and caching
+* **Main Endpoints**:
+   * `/get_top_k`: Retrieves similar companies
+
+## Setup and Usage
+
+1. Install Dependencies:
 ```bash
-streamlit run app.py
+pip install -r requirements.txt
 ```
-2. Select feature type, threshold, and number of documents
-3. Choose a company and click "Process"
-4. View similar companies and their similarity scores
 
-### Batch Processing
-1. Place your data in CSV format in the data directory
-2. Run the main script:
+2. Run the FastAPI Server:
 ```bash
 python main.py
 ```
 
+3. Launch the Streamlit Interface:
+```bash
+streamlit run app.py
+```
 ## Dependencies
 - streamlit
 - pandas
@@ -136,12 +161,6 @@ Input CSV should contain columns:
 - Sourcscrub Description
 - Description.1
 
-## Performance Considerations
-- BERT processing is GPU-accelerated when available
-- BM25 uses parallel processing for large datasets
-- Similarity matrices are saved to disk to handle large datasets
-- Batch processing is implemented for memory efficiency
-- 
 
 ## Comparison and Use Cases
 
@@ -189,9 +208,6 @@ Input CSV should contain columns:
    - TF-IDF: Simple batching
    - BERT: Required for memory management
    - BM25: Beneficial for large datasets
-
-Here’s an updated version of your README without the code, focusing more on the explanation of each component:
-
 ---
 
 # Scalable Document Similarity System with Milvus
@@ -207,10 +223,7 @@ This project implements a **scalable document similarity system** that uses **Mi
 3. [Scalability Considerations](#scalability-considerations)
 4. [Performance Optimization](#performance-optimization)
 5. [Deployment Configuration](#deployment-configuration)
-6. [Monitoring and Maintenance](#monitoring-and-maintenance)
-7. [Usage Example](#usage-example)
-8. [System Requirements](#system-requirements)
-9. [Performance Metrics](#performance-metrics)
+6. [System Requirements](#system-requirements)
 
 ## 1. System Architecture Overview
 
@@ -258,19 +271,7 @@ Milvus indexes are optimized based on the dataset's characteristics, such as its
 
 The system uses **Docker Compose** for containerized deployments. It configures the Milvus, MongoDB, Redis, and Kafka services to work together. This allows for easy setup, scaling, and maintenance of the system on different environments.
 
-## 6. Monitoring and Maintenance
-
-### 6.1 Health Checks
-A health check service monitors the status of the system’s components. It ensures that the data ingestion, feature extraction, and similarity search processes are functioning properly and alerts administrators if there is any issue.
-
-### 6.2 Data Validation
-A validation service checks the integrity and format of incoming data, ensuring that it complies with predefined schemas before it is processed and stored.
-
-## 7. Usage Example
-
-Once the system is deployed, users can input company descriptions or other relevant text, and the similarity search service will return the most similar documents from the database. The API exposes endpoints that allow users to perform these searches programmatically.
-
-## 8. System Requirements
+## 6. System Requirements
 
 - **Python 3.8+**
 - **Milvus** (installed and running)
@@ -279,14 +280,5 @@ Once the system is deployed, users can input company descriptions or other relev
 - **Kafka** for event-driven processing (optional)
 - **Torch** and **transformers** for feature extraction models
 
-## 9. Performance Metrics
 
-Performance is measured based on several factors:
-- **Indexing Speed**: How quickly new data is indexed and made available for searches.
-- **Search Speed**: Time taken to perform similarity searches and return results.
-- **Query Latency**: Latency in searching for similar documents.
-- **Cache Hit Rate**: Efficiency of the caching layer in serving frequent queries.
-
----
-
-This README provides a high-level overview of the architecture and components of the scalable document similarity system. The system is designed to be extensible, with considerations for handling large volumes of data and optimizing for high-performance similarity searches.
+This provides a high-level overview of the architecture and components of the scalable document similarity system. The system is designed to be extensible, with considerations for handling large volumes of data and optimizing for high-performance similarity searches.
