@@ -127,17 +127,16 @@ FastAPI-based backend service:
    * `/get_top_k`: Retrieves similar companies
 
 ## Setup and Usage
-
 1. Install Dependencies:
 ```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
-
 2. Run the FastAPI Server:
 ```bash
 python main.py
 ```
-
 3. Launch the Streamlit Interface:
 ```bash
 streamlit run app.py
